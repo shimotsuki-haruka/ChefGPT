@@ -8,8 +8,7 @@ from typing import List
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate,PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
-from langchain.schema import AIMessage, HumanMessage, SystemMessage
-from openai import api_key
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 #from langchain_core.runnables import RunnablePassthrough
 logger = logging.getLogger(__name__)
@@ -40,11 +39,11 @@ class GenerationIntegrationModule:
         if not api_key:
             raise ValueError("请先设置API_KEY")
         self.llm = ChatOpenAI(
-            model = "deepseek-v3.2-exp",
+            model = self.model_name,
             temperature = self.temperature,
             api_key = api_key,
             streaming = True,   #允许流式输出
-            base_url = "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            base_url=os.getenv("DASHSCOPY_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1"),
             max_tokens = self.max_tokens
         )
         logger.info(f"LLM加载完成")

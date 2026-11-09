@@ -1,6 +1,6 @@
-﻿# 🍳 知味小厨 ChefGPT
+﻿# 🍳 知味小厨 ChefGPT 2.0
 
-基于 **RAG（检索增强生成）** 的中文菜谱问答项目。ChefGPT 从本地 Markdown 菜谱中检索相关内容，再结合大语言模型回答食材用量、制作步骤和烹饪技巧等问题；同时提供命令行与 Streamlit 网页界面。
+基于 **RAG（检索增强生成）** 的中文菜谱问答项目。ChefGPT 从本地 Markdown 菜谱中检索相关内容，再结合大语言模型回答食材用量、制作步骤和烹饪技巧等问题；2.0 在文字问答之外加入**食物照片分类与自动提问**，同时提供命令行和两种 Streamlit 网页界面。
 
 ![ChefGPT 网页界面：左侧对话，右侧知识图谱](docs/images/interface-overview.png)
 
@@ -13,9 +13,10 @@
 | 查询做法 | “红烧肉怎么做？” | 检索菜谱，整理食材与步骤 |
 | 连续追问 | “它需要放糖吗？” | 结合对话历史重写问题，继续查找相关菜谱 |
 | 近义表达 | “番茄炒蛋怎么做？” | 利用语义检索寻找“西红柿炒鸡蛋”等相关内容 |
+| 拍照识菜 | 上传一张食物照片 | 本地模型识别大类，生成菜谱推荐问题 |
 | 查看关联 | 查看检索结果的知识图谱 | 展示菜品与食材、工艺、分类和难度的关系 |
 
-网页界面还提供生成参数调节、清空对话、重建知识库和检索日志查看。知识图谱由本地菜谱提取并生成交互式 HTML，可在界面中查看。
+**拍照识菜界面**支持上传照片、识别食物类别并自动提问；**知识图谱界面**提供对话、参数滑块、重建知识库和检索日志。两者共用同一个 RAG 后端，启动命令见下文。
 
 ![菜品及其关联节点的知识图谱示例](docs/images/knowledge-graph.png)
 
@@ -30,6 +31,10 @@ flowchart LR
     B --> K[实体关系抽取]
     K --> H[交互式知识图谱]
 
+    I[食物照片] --> M[本地图像分类模型]
+    M --> N[11 类食物标签]
+    N --> J[生成菜谱问题]
+    J --> Q
     Q[用户问题] --> R{意图路由}
     R -->|菜谱问题| W[结合历史重写问题]
     W --> S[FAISS 与 BM25 候选召回]
@@ -80,6 +85,12 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ~~~
 
+如需使用**拍照识菜**功能，再安装图像识别依赖：
+
+~~~bash
+python -m pip install -r requirements-vision.txt
+~~~
+
 ### 2. 配置模型密钥
 
 当前代码使用阿里云 DashScope 的 OpenAI 兼容接口，默认模型为 deepseek-v3.2-exp。在项目根目录新建 .env，填写自己的密钥：
@@ -92,7 +103,13 @@ DASHSCOPY_API_KEY=your_api_key_here
 
 ### 3. 启动
 
-网页界面：
+拍照识菜网页界面（需安装图像识别依赖）：
+
+~~~bash
+python -m streamlit run frontend.py
+~~~
+
+知识图谱与调试网页界面：
 
 ~~~bash
 python -m streamlit run frontend_improve.py
@@ -104,6 +121,8 @@ python -m streamlit run frontend_improve.py
 python main.py
 ~~~
 
+命令行中可直接输入菜谱问题，也可以输入 **img chefGPT-test/bread.jpg**。识别后按回车使用自动生成的推荐问题，或输入自己的问题。图片识别只给出面包、汤、海鲜等 **11 个大类**，并不识别具体菜名。
+
 首次运行会下载中文嵌入模型，并根据 data/cook/dishes/ 中的菜谱构建本地索引；所需时间取决于网络和设备性能。后续运行会尝试加载 vector_index/ 中的缓存。与模型对话需要可用的 DashScope API Key 和网络连接。
 
 ## 项目结构
@@ -112,8 +131,12 @@ python main.py
 ChefGPT/
 ├── config.py                         # 数据路径、嵌入模型和生成参数
 ├── main.py                           # RAG 系统与命令行入口
-├── frontend.py                       # 基础 Streamlit 界面
+├── frontend.py                       # 拍照识菜 Streamlit 界面
 ├── frontend_improve.py               # 带知识图谱和调试面板的网页界面
+├── food_recognizer.py                # 本地图像分类与自动提问
+├── my_model1.h5                      # 11 类食物分类模型
+├── assets/classes.txt                # 模型类别标签
+├── chefGPT-test/                     # 已去除 EXIF 的示例照片
 ├── rag_modules/
 │   ├── data_preparation.py           # 菜谱解析、切分和知识图谱
 │   ├── index_construction.py         # 嵌入模型与 FAISS 索引
@@ -121,7 +144,8 @@ ChefGPT/
 │   └── generation_integration.py     # 问题重写、路由与答案生成
 ├── data/cook/dishes/                # 菜谱 Markdown 与图片
 ├── docs/images/                     # 本 README 使用的报告截图
-├── requirements.txt
+├── requirements.txt                  # 文字问答依赖
+├── requirements-vision.txt           # 可选图像识别依赖
 └── README.md
 ~~~
 
@@ -131,6 +155,7 @@ ChefGPT/
 
 - 菜谱数据参考 [HowToCook](https://github.com/Anduin2017/HowToCook)。知识图谱通过规则和关键词从菜谱中提取，复杂语句可能出现漏提取或误提取。
 - 菜品分类依赖文件夹结构；移动菜谱文件后，分类结果可能变化。
+- 图像模型只预测食物大类，识别错误会影响自动生成的推荐问题。图像识别在本地运行，网页上传的照片直接从内存读取，不写入项目目录。
 - 当前仓库中的多数菜谱图片是 Git LFS 指针文件，原始图片对象在上游仓库无法获取，因此这些图片暂时不能正常显示。菜谱文本和问答流程不依赖图片。
 - 模型回答仍可能出错；对食材安全、过敏原和烹饪温度等重要信息，请结合原始菜谱核对。
 

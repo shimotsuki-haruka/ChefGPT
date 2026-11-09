@@ -19,7 +19,6 @@ from rag_modules import (
     IndexConstructionModule,
     RetrievalOptimizationModule,
 )
-
 # 加载环境变量
 load_dotenv()
 
@@ -249,6 +248,9 @@ class RAGSystem:
     def run_interactive(self):
         """
         构建一个交互式系统（命令行）
+        支持文字提问和图片识别模式：
+        - 输入 'img 图片路径' 可先识别食物类别，再自动生成相关菜谱问题
+        - 输入 '退出' / 'exit' / 'quit' 结束对话
         """
         print("=" * 60)
         print("🍳  欢迎来到 知味小厨 （ChefGPT） 🍳".center(60))
@@ -256,17 +258,16 @@ class RAGSystem:
         print("🤖 基于 RAG 技术的智能菜谱问答系统，助您轻松掌厨！".center(60))
         print("=" * 60)
 
-        # 初始化系统
+        # 初始化系统与知识库
         self.initial_system()
         print("系统初始化完成\n")
-
-        # 构建知识库
         self.build_knowledge_base()
 
-        # 历史
         history = []
 
         print("\n交互式问答 (输入'退出'结束):")
+        print("💬 直接输入文字提问")
+        print("📷 输入 'img 图片路径' 使用图片识别提问（例如: img pizza.jpg）")
 
         while True:
             try:
@@ -275,17 +276,48 @@ class RAGSystem:
                     print("👋 感谢使用 ChefGPT，再见！")
                     break
 
-                answer = self.ask_question(user_input, stream=False, history=history)
+                # ========== 图片识别模式（只识别，不自动提问） ==========
+                if user_input == "img" or user_input.startswith("img "):
+                    img_path = user_input[4:].strip()
+                    if not img_path:
+                        print("❌ 请提供图片路径，例如: img pizza.jpg")
+                        continue
+                    try:
+                        from food_recognizer import recognize_food, make_food_question
+                        food_label = recognize_food(img_path)
+                        print(f"📸 识别结果：{food_label}")
+                        # 不再自动构造问题，改为让用户自由输入
+                        print("💡 您可以基于这个结果向我提问，例如：")
+                        print(f'   "最简单的{food_label}做法"')
+                        print(f'   "低卡的{food_label}"')
+                        custom_question = input("👉 请输入您的问题（直接回车使用默认推荐问题）: ").strip()
+                        if not custom_question:
+                            # 默认提问
+                            user_question = make_food_question(food_label)
+                        else:
+                            # 用户自定义提问，可以不带标签，也可以拼接标签
+                            user_question = custom_question
+                    except FileNotFoundError:
+                        print(f"❌ 找不到图片文件: {img_path}")
+                        continue
+                    except Exception as e:
+                        print(f"❌ 图片识别失败: {e}")
+                        continue
+                else:
+                    # 普通文字提问
+                    user_question = user_input
+                # ===================================
 
-                # 跳过彩蛋
-                if not answer:
+                # 调用核心问答
+                answer = self.ask_question(user_question, stream=False, history=history)
+                if answer is None:
                     continue
-
-                history.append({"role": "user", "content": user_input})
+                history.append({"role": "user", "content": user_question})
                 history.append({"role": "assistant", "content": answer})
-
                 print(f"{answer}\n")
+
             except KeyboardInterrupt:
+                print("\n👋 检测到退出指令，感谢使用 ChefGPT！")
                 break
             except Exception as e:
                 print(f"处理问题时出错: {e}\n")

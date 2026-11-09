@@ -215,3 +215,6 @@ $null
 # Local secrets (keep a shareable .env.example if needed)
 .env.*
 !.env.example
+
+# Local Python environment used by the v2 prototype
+venv39/

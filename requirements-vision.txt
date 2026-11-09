@@ -1,0 +1,6 @@
+-r requirements.txt
+
+# Optional image-recognition dependencies
+tensorflow
+numpy
+Pillow
