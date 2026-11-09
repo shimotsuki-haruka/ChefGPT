@@ -126,7 +126,7 @@ python -m pip install -r requirements-vision.txt
 DASHSCOPY_API_KEY=your_api_key_here
 ~~~
 
-.env 已被 .gitignore 排除。也可以直接设置同名系统环境变量。请勿将真实密钥写入源码或提交到仓库。
+也可以直接设置同名系统环境变量。请妥善保管密钥，不要将真实密钥提交到仓库。
 
 ### 3. 启动
 
@@ -176,7 +176,7 @@ ChefGPT/
 └── README.md
 ~~~
 
-运行时生成的 vector_index/ 和 output/ 已在 .gitignore 中排除。后者保存知识图谱 HTML 等本地生成结果。
+`vector_index/` 保存菜谱向量索引，供后续启动复用；`output/` 保存生成的知识图谱等结果。这两个目录会按需创建，无需提前准备。
 
 ## 数据来源
 
