@@ -74,6 +74,9 @@ class IndexConstructionModule:
         
         #这一句判断有点问题，只能判断index文件夹存不存在,无法保证里面存不存在faiss文件
         index_path = Path(self.index_save_path)
+        if not index_path.is_dir():
+            logger.info("索引目录不存在，首次运行将构建索引")
+            return None
         faiss_files = [f for f in index_path.iterdir() if f.suffix == ".faiss"]
         if not faiss_files:
             logger.warning("索引目录中没有找到 .faiss 文件")
